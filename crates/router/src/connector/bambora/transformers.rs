@@ -10,16 +10,17 @@ enum PaymentMethod {
     InputCardDetails,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default,Debug, Clone, Serialize, Deserialize)]
 struct InputCardDetails {
     name: String,
     number: String,
     expiry_month: String,
     expiry_year: String,
     cvd: String,
+    // complete: Option<String>
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default,Debug, Serialize, Deserialize)]
 struct Custom {
     ref1: String,
     ref2: String,
@@ -28,7 +29,7 @@ struct Custom {
     ref5: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default,Debug, Serialize, Deserialize)]
 struct Card {
     card_type: String,
     last_four: String,
@@ -41,14 +42,14 @@ struct Card {
     avs: Option<Avs>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default,Debug, Serialize, Deserialize)]
 struct Avs {
     id: String,
     message: String,
     processed: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default,Debug, Serialize, Deserialize)]
 struct Link {
     rel: String,
     href: String,
@@ -56,13 +57,31 @@ struct Link {
 }
 
 //TODO: Fill the struct with respective fields
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default,Debug, Serialize, Deserialize)]
 pub struct BamboraPaymentsRequest {
     amount: i64,
     payment_method: String,
     card: InputCardDetails,
     order_number: String
 }
+
+#[derive(Default,Deserialize, Debug, Serialize)]
+pub struct BamboraPaymentsCaptureRequest {
+    amount: i64,
+    payment_method: String,
+    card: InputCardDetails,
+}
+
+
+impl TryFrom<&types::PaymentsCaptureRouterData> for BamboraPaymentsRequest {
+    type Error = error_stack::Report<errors::ConnectorError>;
+    fn try_from(_item: &types::PaymentsCaptureRouterData) -> Result<Self, Self::Error> {
+        Ok(Self {
+            ..Default::default()
+        })
+    }
+}
+
 
 impl TryFrom<&types::PaymentsAuthorizeRouterData> for BamboraPaymentsRequest  {
     type Error = error_stack::Report<errors::ConnectorError>;
@@ -117,24 +136,22 @@ impl TryFrom<&types::ConnectorAuthType> for BamboraAuthType  {
 }
 // PaymentsResponse
 //TODO: Append the remaining status flags
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum BamboraPaymentStatus {
-    Succeeded,
-    Failed,
-    #[default]
-    Processing,
-}
+// #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+// #[serde(rename_all = "lowercase")]
+// pub enum BamboraPaymentStatus {
+//     #[default]
+//     ZERO,
+//     ONE,
+// }
 
-impl From<BamboraPaymentStatus> for enums::AttemptStatus {
-    fn from(item: BamboraPaymentStatus) -> Self {
-        match item {
-            BamboraPaymentStatus::Succeeded => Self::Charged,
-            BamboraPaymentStatus::Failed => Self::Failure,
-            BamboraPaymentStatus::Processing => Self::Authorizing,
-        }
-    }
-}
+// impl From<BamboraPaymentStatus> for enums::AttemptStatus {
+//     fn from(item: BamboraPaymentStatus) -> Self {
+//         match item {
+//             BamboraPaymentStatus::ONE => Self::Charged,
+//             BamboraPaymentStatus::ZERO => Self::Authorized,
+//         }
+//     }
+// }
 
 //TODO: Fill the struct with respective fields
 #[derive(Debug, Serialize, Deserialize)]
@@ -161,7 +178,11 @@ impl<F,T> TryFrom<types::ResponseRouterData<F, BamboraPaymentsResponse, T, types
     type Error = error_stack::Report<errors::ParsingError>;
     fn try_from(item: types::ResponseRouterData<F, BamboraPaymentsResponse, T, types::PaymentsResponseData>) -> Result<Self,Self::Error> {
         Ok(Self {
-            status: enums::AttemptStatus::Charged,
+            status: match item.response.approved.as_str() {
+                "1" => enums::AttemptStatus::Charged,
+                "0" => enums::AttemptStatus::Authorized,
+                _ => enums::AttemptStatus::default()
+            },
             response: Ok(types::PaymentsResponseData::TransactionResponse {
                 resource_id: types::ResponseId::ConnectorTransactionId(item.response.id),
                 redirection_data: None,
@@ -268,6 +289,17 @@ impl TryFrom<types::RefundsResponseRouterData<api::RSync, RefundResponse>> for t
      }
  }
 
-//TODO: Fill the struct with respective fields
-#[derive(Default, Debug, Serialize, Deserialize, PartialEq)]
-pub struct BamboraErrorResponse {}
+ #[derive(Default, Debug, Deserialize, PartialEq)]
+ #[serde(rename_all = "camelCase")]
+ pub struct BamboraErrorResponse {
+     pub error: ApiErrorResponse,
+ }
+ 
+
+ #[derive(Default, Debug, Clone, Deserialize, Eq, PartialEq)]
+ pub struct ApiErrorResponse {
+     pub code: i64,
+     pub category: i64,
+     pub message: String,
+     pub reference: String,
+ }
