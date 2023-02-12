@@ -17,7 +17,7 @@ struct InputCardDetails {
     expiry_month: String,
     expiry_year: String,
     cvd: String,
-    // complete: Option<String>
+    complete: Option<String>
 }
 
 #[derive(Default,Debug, Serialize, Deserialize)]
@@ -93,6 +93,10 @@ impl TryFrom<&types::PaymentsAuthorizeRouterData> for BamboraPaymentsRequest  {
                 expiry_month:ccard.card_exp_month.peek().clone(),
                 expiry_year: ccard.card_exp_year.peek().clone(),
                 cvd:ccard.card_cvc.peek().clone(),
+                complete: match _item.request.capture_method {
+                    Some(storage_models::enums::CaptureMethod::Manual) => Some("manual".to_string()),
+                    _ => Some("automatic".to_string())
+                }
             },
             _ => Err(errors::ConnectorError::NotImplemented("payment method".into()))?,
         };
@@ -180,7 +184,7 @@ impl<F,T> TryFrom<types::ResponseRouterData<F, BamboraPaymentsResponse, T, types
         Ok(Self {
             status: match item.response.approved.as_str() {
                 "1" => enums::AttemptStatus::Charged,
-                "0" => enums::AttemptStatus::Authorized,
+                "0" => enums::AttemptStatus::Failure,
                 _ => enums::AttemptStatus::default()
             },
             response: Ok(types::PaymentsResponseData::TransactionResponse {
