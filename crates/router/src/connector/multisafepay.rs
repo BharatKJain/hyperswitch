@@ -32,7 +32,16 @@ where
         _req: &types::RouterData<Flow, Request, Response>,
         _connectors: &settings::Connectors,
     ) -> CustomResult<Vec<(String, String)>, errors::ConnectorError> {
-        todo!()
+        // todo!()
+        let mut headers = vec![
+            (
+                headers::CONTENT_TYPE.to_string(),
+                self.get_content_type().to_string(),
+            ),
+        ];
+        let mut api_key=self.get_auth_header(&_req.connector_auth_type)?;
+        headers.append(&mut api_key);
+        Ok(headers)
     }
 }
 

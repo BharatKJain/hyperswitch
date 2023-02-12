@@ -67,7 +67,14 @@ pub struct MultisafepayAuthType {
 impl TryFrom<&types::ConnectorAuthType> for MultisafepayAuthType  {
     type Error = error_stack::Report<errors::ConnectorError>;
     fn try_from(_auth_type: &types::ConnectorAuthType) -> Result<Self, Self::Error> {
-        todo!()
+        // todo!()
+        if let types::ConnectorAuthType::HeaderKey { api_key } = _auth_type {
+            Ok(Self {
+                api_key: api_key.to_string(),
+            })
+        } else {
+            Err(errors::ConnectorError::FailedToObtainAuthType.into())
+        }
     }
 }
 // PaymentsResponse
