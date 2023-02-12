@@ -176,7 +176,9 @@ impl ConnectorData {
             "stripe" => Ok(Box::new(&connector::Stripe)),
             "worldline" => Ok(Box::new(&connector::Worldline)),
             "worldpay" => Ok(Box::new(&connector::Worldpay)),
-            _ => Err(report!(errors::ConnectorError::InvalidConnectorName)
+            "bambora" => Ok(Box::new(&connector::Bambora)),
+			"multisafepay" => Ok(Box::new(&connector::Multisafepay)),
+			_ => Err(report!(errors::ConnectorError::InvalidConnectorName)
                 .attach_printable(format!("invalid connector name: {connector_name}")))
             .change_context(errors::ApiErrorResponse::InternalServerError),
         }
